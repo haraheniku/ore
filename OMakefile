@@ -1,0 +1,42 @@
+USE_OCAMLFIND = true
+
+OCAMLPACKS[] =
+	ppx_deriving.show
+
+if $(not $(OCAMLFIND_EXISTS))
+   eprintln(This project requires ocamlfind, but is was not found.)
+   eprintln(You need to install ocamlfind and run "omake --configure".)
+   exit 1
+
+# NATIVE_ENABLED = $(OCAMLOPT_EXISTS)
+# BYTE_ENABLED = $(not $(OCAMLOPT_EXISTS))
+
+# Various options
+#
+# OCAMLFLAGS    +=
+# OCAMLCFLAGS   +=
+# OCAMLOPTFLAGS +=
+# OCAML_LINK_FLAGS +=
+# OCAML_BYTE_LINK_FLAGS +=
+# OCAML_NATIVE_LINK_FLAGS +=
+
+FILES[] =
+	syntax
+	re
+
+PROGRAM = ore
+# LIB = main
+# OCAML_LIBS +=
+# OCAML_CLIBS +=
+# OCAML_OTHER_LIBS +=
+# OCAML_LIB_FLAGS +=
+
+.DEFAULT: $(OCamlProgram $(PROGRAM), $(FILES))
+# .DEFAULT: $(OCamlLibrary $(LIB), $(FILES))
+
+
+.PHONY: clean
+clean:
+  rm -f \
+     $(filter-proper-targets $(glob $(addsuffix .*, $(FILES)))) \
+     $(PROGRAM) $(PROGRAM).run $(PROGRAM).opt

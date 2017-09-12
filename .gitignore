@@ -1,0 +1,27 @@
+ore
+
+.omakedb
+.omakedb.lock
+*.omc
+
+*.annot
+*.cmo
+*.cma
+*.cmi
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
+
+# ocamlbuild working directory
+_build/
+
+# ocamlbuild targets
+*.byte
+*.native
+*.opt
+
+# oasis generated files
+setup.data
+setup.log
