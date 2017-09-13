@@ -4,19 +4,25 @@ type inst =
   | InstNop
   | InstMatch
   | InstFail
+  | InstAny
   | InstChar of char
   | InstString of string
   | InstJmp of int
   | InstSplit of int * int
+  | InstBeginCap of int
+  | InstEndCap of int
+  | InstRef of int
 [@@deriving show]
 
 
 type regex =
-    { insts: inst array; }
+    { insts: inst array;
+      numcaps: int; }
 [@@deriving show]
 
 
 let compile s =
+  let { re = re; numgroups=numgroups; } = parse s in
   let prog = ref (Array.make 32 InstNop) in
   let pos = ref 0 in
 
@@ -38,6 +44,8 @@ let compile s =
     (!prog).(p) <- op
   in
   let rec emit_code = function
+    | Any ->
+        emit_inst InstAny
     | Char c ->
         emit_inst (InstChar c)
     | String s ->
@@ -85,13 +93,18 @@ let compile s =
         emit_code r;
         let pos_split = emit_hole () in
         patch_hole pos_split (InstSplit (pos_start, !pos))
-    | Group r ->
-        emit_code r
+    | Group (i, r) ->
+        emit_inst (InstBeginCap i);
+        emit_code r;
+        emit_inst (InstEndCap i)
+    | Ref i ->
+        emit_inst (InstRef i)
   in
 
-  emit_code (parse s);
+  emit_code re;
   emit_inst InstMatch;
-  { insts = Array.sub !prog 0 !pos; }
+  { insts = Array.sub !prog 0 !pos;
+    numcaps = numgroups; }
 
 
 let substr_match s1 l1 start s2 l2 =
@@ -105,9 +118,10 @@ let substr_match s1 l1 start s2 l2 =
 
 let exec reg s =
   let len = String.length s in
-  let insts = reg.insts in
+  let { insts = insts; numcaps = numcaps } = reg in
   let proglen = Array.length insts in
-
+  let slots = Array.make numcaps (-1) in
+  let caps = Array.make (numcaps+1) "" in
   let rec exec_code pc i =
     if pc >= proglen then assert false else
     let inst = insts.(pc) in
@@ -115,6 +129,9 @@ let exec reg s =
     | InstNop -> exec_code (pc+1) i
     | InstMatch -> Some i
     | InstFail -> None
+    | InstAny ->
+        if i >= len then None
+        else exec_code (pc+1) (i+1)
     | InstChar c ->
         if i >= len then None
         else if s.[i] = c then exec_code (pc+1) (i+1)
@@ -125,26 +142,53 @@ let exec reg s =
         if not m then None else exec_code (pc+1) (litlen + i)
     | InstJmp x -> exec_code x i
     | InstSplit (x, y) ->
-        match exec_code x i with
+        (match exec_code x i with
         | None -> exec_code y i
-        | _ as s -> s
+        | s -> s)
+    | InstBeginCap j ->
+        let old = slots.(j-1) in
+        slots.(j-1) <- i;
+        (match exec_code (pc+1) i with
+        | None ->
+            slots.(j-1) <- old;
+            None
+        | s -> s)
+    | InstEndCap j ->
+        let start = slots.(j-1) in
+        let cap = String.sub s start (i-start) in
+        let old = caps.(j) in
+        caps.(j) <- cap;
+        (match exec_code (pc+1) i with
+        | None ->
+            caps.(j) <- old;
+            None
+        | s -> s)
+    | InstRef j ->
+        let cap = caps.(j) in
+        let caplen = String.length cap in
+        let m = substr_match s len i cap caplen in
+        if not m then None else exec_code (pc+1) (caplen + i)
   in
 
   let rec loop start =
     if start >= len then
       raise Not_found
-    else
+    else begin
       match exec_code 0 start with
       | None -> loop (start+1)
       | Some stop ->
           String.sub s start (stop-start)
+    end
   in
-  loop 0
+  let m = loop 0 in
+  caps.(0) <- m;
+  caps
 
 
 let () =
-  let prog = "(foo+)+" in
-  print_endline @@ show_syntax @@ parse prog;
+  let prog = "(foo+)\\1" in
+  print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;
-  print_endline @@ exec reg "fooooofoofooooofoo"
+  let m = exec reg "fooofooo" in
+  Printf.printf "%s, %s\n" m.(0) m.(1)

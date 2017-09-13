@@ -1,4 +1,5 @@
 type syntax =
+  | Any
   | Char of char
   | String of string
   | Seq of syntax list
@@ -6,7 +7,8 @@ type syntax =
   | Star of syntax
   | Plus of syntax
   | Option of syntax
-  | Group of syntax
+  | Group of int * syntax
+  | Ref of int
 [@@deriving show]
 
 
@@ -30,18 +32,23 @@ module SeqBuf = struct
   let add seq = function
     | Char c ->
         Buffer.add_char seq.buf c
-    | _ as syn ->
+    | r ->
         flush seq;
-        seq.next <- syn :: seq.next
+        seq.next <- r :: seq.next
 
   let extract seq =
     flush seq;
     Seq (List.rev seq.next)
 end
 
+type program =
+    { re: syntax;
+      numgroups: int; }
+[@@deriving show]
 
 let parse s =
   let len = String.length s in
+  let group_count = ref 0 in
 
   let rec regexp i =
     let left, j = sequence i in
@@ -70,12 +77,31 @@ let parse s =
   and atom i =
     match s.[i] with
     | '*' | '+' | '?' | '|' -> assert false
+    | '.' -> (Any, i+1)
+    | '\\' -> backslash (i+1)
     | '(' ->
         let r, j = regexp (i+1) in
         if j < len && s.[j] = ')'
-        then (Group r, j+1)
+        then begin
+          incr group_count;
+          (Group (!group_count, r), j+1)
+        end
         else assert false
     | _ as c -> (Char c, i+1)
+  and backslash i =
+    if i >= len then (Char '\\', i) else
+    match s.[i] with
+    | '1' .. '9' as c ->
+        let k = (int_of_char c - 48) in
+        if k > !group_count then
+          failwith @@ Printf.sprintf "invalid group reference %d" k
+        else
+          (Ref k, i+1)
+    | c -> (Char c, i)
   in
 
-  fst (regexp 0)
+  let r, k = regexp 0 in
+  if k != len then assert false
+  else
+    { re = r;
+      numgroups = !group_count; }
