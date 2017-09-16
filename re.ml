@@ -7,6 +7,7 @@ type inst =
   | InstAny
   | InstAnyNotNL
   | InstChar of char
+  | InstCharClass of char list * bool
   | InstString of string
   | InstJmp of int
   | InstSplit of int * int
@@ -53,6 +54,8 @@ let compile s =
         emit_inst InstAnyNotNL
     | Char c ->
         emit_inst (InstChar c)
+    | CharClass (cs, compl) ->
+        emit_inst (InstCharClass (cs, compl))
     | String s ->
         emit_inst (InstString s)
     | Seq rl ->
@@ -151,6 +154,10 @@ let exec reg s =
         if i >= len then None
         else if s.[i] = c then exec_code (pc+1) (i+1)
         else None
+    | InstCharClass (cs, compl) ->
+        if i >= len then None
+        else if compl = List.mem s.[i] cs then None
+        else exec_code (pc+1) (i+1)
     | InstString lit ->
         let litlen = String.length lit in
         let m = substr_match s len i lit litlen in
@@ -197,7 +204,7 @@ let exec reg s =
         begin
           match s.[i+1] with
           | '\r' | '\n' ->
-              exec_code (pc+1) i
+              exec_code (pc+1) (i+1)
           | _ -> None
         end
   in
@@ -218,9 +225,9 @@ let exec reg s =
 
 
 let () =
-  let prog = "^foo." in
+  let prog = "^[][a-z]+$" in
   print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;
-  let m = exec reg "foo\nhoge\nfooa\nhoge" in
+  let m = exec reg "[hage]" in
   Array.iteri (fun i s -> Printf.printf "%d:%s\n" i s) m
