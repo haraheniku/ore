@@ -200,11 +200,11 @@ let exec reg s =
           | _ -> None
         end
     | InstEndLine ->
-        if i+1 >= len then exec_code (pc+1) i else
+        if i >= len then exec_code (pc+1) i else
         begin
-          match s.[i+1] with
+          match s.[i] with
           | '\r' | '\n' ->
-              exec_code (pc+1) (i+1)
+              exec_code (pc+1) i
           | _ -> None
         end
   in
