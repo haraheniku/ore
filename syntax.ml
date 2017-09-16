@@ -9,6 +9,8 @@ type syntax =
   | Option of syntax
   | Group of int * syntax
   | Ref of int
+  | BeginLine
+  | EndLine
 [@@deriving show]
 
 
@@ -78,6 +80,8 @@ let parse s =
     match s.[i] with
     | '*' | '+' | '?' | '|' -> assert false
     | '.' -> (Any, i+1)
+    | '^' -> (BeginLine, i+1)
+    | '$' -> (EndLine, i+1)
     | '\\' -> backslash (i+1)
     | '(' ->
         let r, j = regexp (i+1) in
@@ -92,7 +96,7 @@ let parse s =
     if i >= len then (Char '\\', i) else
     match s.[i] with
     | '1' .. '9' -> refnum i
-    | c -> (Char c, i)
+    | c -> (Char c, i+1)
   and refnum i =
     let rec loop j =
       if i+j >= len then j else

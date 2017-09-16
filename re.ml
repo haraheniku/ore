@@ -12,6 +12,8 @@ type inst =
   | InstBeginCap of int
   | InstEndCap of int
   | InstRef of int
+  | InstBeginLine
+  | InstEndLine
 [@@deriving show]
 
 
@@ -99,6 +101,10 @@ let compile s =
         emit_inst (InstEndCap i)
     | Ref i ->
         emit_inst (InstRef i)
+    | BeginLine ->
+        emit_inst InstBeginLine
+    | EndLine ->
+        emit_inst InstEndLine
   in
 
   emit_code re;
@@ -169,6 +175,22 @@ let exec reg s =
         let caplen = String.length cap in
         let m = substr_match s len i cap caplen in
         if not m then None else exec_code (pc+1) (caplen + i)
+    | InstBeginLine ->
+        if i == 0 then exec_code (pc+1) i else
+        begin
+          match s.[i-1] with
+          | '\r' | '\n' ->
+              exec_code (pc+1) i
+          | _ -> None
+        end
+    | InstEndLine ->
+        if i >= len then Some i else
+        begin
+          match s.[i+1] with
+          | '\r' | '\n' ->
+              exec_code (pc+1) i
+          | _ -> None
+        end
   in
 
   let rec loop start =
@@ -187,9 +209,9 @@ let exec reg s =
 
 
 let () =
-  let prog = "(foo+)(a)(a)(a)(a)(a)(a)(a)(a)(a)\\10fu" in
+  let prog = "^foo$" in
   print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;
-  let m = exec reg "foooaaaaaaaaaafu" in
+  let m = exec reg "fooo\nhoge\nfoo\nhoge" in
   Array.iteri (fun i s -> Printf.printf "%d:%s\n" i s) m
