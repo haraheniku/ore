@@ -200,7 +200,7 @@ let exec reg s =
           | _ -> None
         end
     | InstEndLine ->
-        if i >= len then exec_code (pc+1) i else
+        if i+1 >= len then exec_code (pc+1) i else
         begin
           match s.[i+1] with
           | '\r' | '\n' ->
@@ -225,9 +225,9 @@ let exec reg s =
 
 
 let () =
-  let prog = "^[^]0-9]+$" in
+  let prog = "^[a-z]+$" in
   print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;
-  let m = exec reg "[hage]" in
+  let m = exec reg "hage\n" in
   Array.iteri (fun i s -> Printf.printf "%d:%s\n" i s) m
