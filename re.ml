@@ -225,7 +225,7 @@ let exec reg s =
 
 
 let () =
-  let prog = "^[][a-z]+$" in
+  let prog = "^[^]0-9]+$" in
   print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;

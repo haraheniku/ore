@@ -108,6 +108,7 @@ let parse s =
       if s.[i] = '^' then true
       else false
     in
+    let start = if compl then i+1 else i in
     let rec range c1 c2 l =
       if c1 > c2 then l else
       let code = (Char.code c1) in
@@ -116,7 +117,7 @@ let parse s =
     let rec loop cs j =
       if j >= len then failwith "unterminated character set";
       let c1 = s.[j] in
-      if c1 = ']' && j <> i then (cs, j)
+      if c1 = ']' && j > start then (cs, j)
       else if j+2 < len && s.[j+1] = '-' && s.[j+2] <> ']' then begin
         let c2 = s.[j+2] in
         if c1 > c2 then failwith "bad character range";
@@ -124,7 +125,7 @@ let parse s =
         loop (CharSet.union cs cs2) (j+3)
       end else loop (CharSet.add c1 cs) (j+1)
     in
-    let cs, j = loop CharSet.empty (if compl then i+1 else i) in
+    let cs, j = loop CharSet.empty start in
     (CharClass (CharSet.elements cs, compl), j+1)
   and refnum i =
     let rec loop j =
