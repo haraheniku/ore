@@ -184,7 +184,7 @@ let exec reg s =
           | _ -> None
         end
     | InstEndLine ->
-        if i >= len then Some i else
+        if i >= len then exec_code (pc+1) i else
         begin
           match s.[i+1] with
           | '\r' | '\n' ->
