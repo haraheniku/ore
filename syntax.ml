@@ -91,15 +91,22 @@ let parse s =
   and backslash i =
     if i >= len then (Char '\\', i) else
     match s.[i] with
-    | '1' .. '9' as c ->
-        let k = (int_of_char c - 48) in
-        if k > !group_count then
-          failwith @@ Printf.sprintf "invalid group reference %d" k
-        else
-          (Ref k, i+1)
+    | '1' .. '9' -> refnum i
     | c -> (Char c, i)
+  and refnum i =
+    let rec loop j =
+      if i+j >= len then j else
+      match s.[i+j] with
+      | '0' .. '9' -> loop (j+1)
+      | _ -> j
+    in
+    let j = loop 1 in
+    let n = int_of_string @@ String.sub s i j in
+    if n > !group_count then
+      failwith @@ Printf.sprintf "invalid group reference %d" n
+    else
+      (Ref n, i+j)
   in
-
   let r, k = regexp 0 in
   if k != len then assert false
   else

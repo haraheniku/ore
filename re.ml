@@ -117,11 +117,12 @@ let substr_match s1 l1 start s2 l2 =
 
 
 let exec reg s =
-  let len = String.length s in
   let { insts = insts; numcaps = numcaps } = reg in
+  let len = String.length s in
   let proglen = Array.length insts in
   let slots = Array.make numcaps (-1) in
   let caps = Array.make (numcaps+1) "" in
+
   let rec exec_code pc i =
     if pc >= proglen then assert false else
     let inst = insts.(pc) in
@@ -186,9 +187,9 @@ let exec reg s =
 
 
 let () =
-  let prog = "(foo+)\\1" in
+  let prog = "(foo+)(a)(a)(a)(a)(a)(a)(a)(a)(a)\\10fu" in
   print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;
-  let m = exec reg "fooofooo" in
-  Printf.printf "%s, %s\n" m.(0) m.(1)
+  let m = exec reg "foooaaaaaaaaaafu" in
+  Array.iteri (fun i s -> Printf.printf "%d:%s\n" i s) m
