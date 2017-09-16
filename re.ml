@@ -222,12 +222,3 @@ let exec reg s =
   let m = loop 0 in
   caps.(0) <- m;
   caps
-
-
-let () =
-  let prog = "^[a-z]+$" in
-  print_endline @@ show_program @@ parse prog;
-  let reg = compile prog in
-  print_endline @@ show_regex reg;
-  let m = exec reg "hage\n" in
-  Array.iteri (fun i s -> Printf.printf "%d:%s\n" i s) m
