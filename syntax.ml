@@ -1,5 +1,6 @@
 type syntax =
   | Any
+  | AnyNotNL
   | Char of char
   | String of string
   | Seq of syntax list
@@ -79,7 +80,7 @@ let parse s =
   and atom i =
     match s.[i] with
     | '*' | '+' | '?' | '|' -> assert false
-    | '.' -> (Any, i+1)
+    | '.' -> (AnyNotNL, i+1)
     | '^' -> (BeginLine, i+1)
     | '$' -> (EndLine, i+1)
     | '\\' -> backslash (i+1)

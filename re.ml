@@ -5,6 +5,7 @@ type inst =
   | InstMatch
   | InstFail
   | InstAny
+  | InstAnyNotNL
   | InstChar of char
   | InstString of string
   | InstJmp of int
@@ -48,6 +49,8 @@ let compile s =
   let rec emit_code = function
     | Any ->
         emit_inst InstAny
+    | AnyNotNL ->
+        emit_inst InstAnyNotNL
     | Char c ->
         emit_inst (InstChar c)
     | String s ->
@@ -139,6 +142,11 @@ let exec reg s =
     | InstAny ->
         if i >= len then None
         else exec_code (pc+1) (i+1)
+    | InstAnyNotNL ->
+        if i >= len then None else
+          (match s.[i] with
+          | '\r' | '\n' -> None
+          | _ -> exec_code (pc+1) (i+1))
     | InstChar c ->
         if i >= len then None
         else if s.[i] = c then exec_code (pc+1) (i+1)
@@ -146,7 +154,8 @@ let exec reg s =
     | InstString lit ->
         let litlen = String.length lit in
         let m = substr_match s len i lit litlen in
-        if not m then None else exec_code (pc+1) (litlen + i)
+        if not m then None
+        else exec_code (pc+1) (litlen + i)
     | InstJmp x -> exec_code x i
     | InstSplit (x, y) ->
         (match exec_code x i with
@@ -209,9 +218,9 @@ let exec reg s =
 
 
 let () =
-  let prog = "^foo$" in
+  let prog = "^foo." in
   print_endline @@ show_program @@ parse prog;
   let reg = compile prog in
   print_endline @@ show_regex reg;
-  let m = exec reg "fooo\nhoge\nfoo\nhoge" in
+  let m = exec reg "foo\nhoge\nfooa\nhoge" in
   Array.iteri (fun i s -> Printf.printf "%d:%s\n" i s) m
